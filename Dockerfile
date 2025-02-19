@@ -8,4 +8,6 @@ RUN pip install --no-cache-dir --upgrade -r /root/requirements.txt
 
 COPY ./app /root/app
 
-CMD ["fastapi", "run", "app/api.py", "--port", "80"]
+EXPOSE 8080
+
+CMD ["fastapi", "run", "app/api.py", "--port", "8080"]
