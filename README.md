@@ -4,11 +4,12 @@ Minimum Requirements:
 - Test performance
 
 TODO:
-- [ ] Set up CI/CD on GCP for cloud run
+- [x] Set up CD on GCP for cloud run
+- [ ] Add unauthenticated CORS for iteration
 - [ ] Build llm wrapper with fastAPI
-- [ ] testing framework
+- [ ] Setup testing and CI
 - [ ] deploy database for conversation history
-- [ ] add CORS and auth
+- [ ] Add CORS and auth
 - [ ] add logging and monitoring
 - [ ] Test performance
 - [ ] Prompt tune
