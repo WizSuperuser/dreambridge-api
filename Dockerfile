@@ -4,8 +4,8 @@ WORKDIR /root
 
 COPY ./requirements.txt /root/requirements.txt
 
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /root/requirements.txt
 
-COPY ./app /code/app
+COPY ./app /root/app
 
 CMD ["fastapi", "run", "app/api.py", "--port", "80"]
