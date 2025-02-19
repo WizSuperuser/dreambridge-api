@@ -1,0 +1,16 @@
+steps:
+# Build the image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'asia-south1-docker.pkg.dev/dreambridge-api/dreambridge/api', '.']
+# Push the image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'asia-south1-docker.pkg.dev/dreambridge-api/dreambridge/api']
+# Deploy image to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args: ['run', 'deploy', 'dreambridge-api', '--image', 'asia-south1-docker.pkg.dev/dreambridge-api/dreambridge/api', '--region', 'asia-south1']
+images:
+- 'asia-south1-docker.pkg.dev/dreambridge-api/dreambridge/api'  
+serviceAccount: 'projects/dreambridge-api/serviceAccounts/934356526592-compute@developer.gserviceaccount.com'
+options:
+  logging: CLOUD_LOGGING_ONLY
