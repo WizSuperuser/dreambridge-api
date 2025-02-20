@@ -6,17 +6,19 @@ Minimum Requirements:
 TODO:
 - [x] Set up CD on GCP for cloud run
 - [x] Add unauthenticated CORS for iteration
-- [ ] Build llm wrapper with fastAPI
-- [ ] Setup testing and CI
+- [ ] Add steps for CD
+- [x] Build llm wrapper with fastAPI
+- [ ] Setup testing 
 - [ ] deploy database for conversation history
+- [ ] second option for llm api and exception handling
 - [ ] Add CORS and auth
-- [ ] add logging and monitoring
-- [ ] Test performance
 - [ ] Prompt tune
 - [ ] Performance tune with caching
+- [ ] add logging and monitoring
+- [ ] Test performance and CI
 
 
-### How to test API?
+## How to test API?
 
 Steps: add developer as Cloud Run Invoker -> use gcloud auth print-identity-token in OAuth2 bearer
 
@@ -29,3 +31,7 @@ curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" <SERVICE_URL
 ```
 
 or use the identity token with OAuth2.0 Authorization in Postman.
+
+
+## Enabling CD on GCP using Cloud Build to Cloud Run
+ 
