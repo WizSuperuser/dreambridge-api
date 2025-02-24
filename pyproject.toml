@@ -5,6 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "cloud-sql-python-connector[asyncpg]>=1.17.0",
     "fastapi[standard]>=0.115.8",
+    "greenlet>=3.1.1",
     "langchain-openai>=0.3.6",
+    "sqlalchemy>=2.0.38",
 ]
