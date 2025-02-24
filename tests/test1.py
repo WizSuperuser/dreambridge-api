@@ -3,7 +3,7 @@ import httpx
 url = "http://localhost:8000/stream_query"
 
 with httpx.stream(
-    "GET",
+    "POST",
     url,
     json={
         "userid": "ok",
