@@ -4,9 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 from dotenv import load_dotenv
 
+from llm import stream_llm_response
+
 load_dotenv()
 
-from app.llm import stream_llm_response
 
 app = FastAPI()
 

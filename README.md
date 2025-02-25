@@ -8,12 +8,14 @@ TODO:
 - [x] Add unauthenticated CORS for iteration
 - [x] Add steps for CD
 - [x] Build llm wrapper with fastAPI
-- [ ] deploy database for conversation history: 21
-  - [ ] user data
-  - [ ] userid in conversation table
-  - [ ] extra informaiton
-  - [ ] validate schema by checking with Madhavi
-- [ ] Setup testing for database: 21
+- [x] deploy database for conversation history: 21
+  - [x] user data
+  - [x] userid in conversation table
+  - [x] extra informaiton
+  - [x] validate schema by checking with Madhavi
+- [x] Setup checkpointer for agent memory
+- [ ] Make api update database on queries
+- [ ] Test database operations
 - [ ] exception handling and second option for llm api: 24
 - [ ] add auth: 24
   - [ ] add auth to database
@@ -79,9 +81,34 @@ gcloud sql users create chef \
 
 2. Create a database on the instance `gcloud sql databases create backend --instance={instance-name}` to create a database called backend.
 3. Add username, password, database to `.env` file. Look at .env.example file for exact variable names.
-4. Add these variables to Secret Manager on cloud, give the service account for cloud run the permissions of Secret Manager Secret Accessor and add those secrets to Cloud Run instance. 
+4. Add these variables to Secret Manager on cloud, give the service account for cloud run the permissions of Secret Manager Secret Accessor and add those secrets to Cloud Run instance.
 
 ## Update tables on API calls
 1. Add persistance to chat
 
 ## Test that tables are getting properly updated
+
+
+
+
+## Schema
+Session table
+|-sessionid
+|-userid
+|-heading?
+
+Messages table
+|-messageid
+|-sessionid
+|-taskid
+
+Tasks table
+|-taskid
+|-task
+
+Users Table
+|-userid
+
+Langgraph checkpointer
+|-sessionid
+|-messages

@@ -9,5 +9,8 @@ dependencies = [
     "fastapi[standard]>=0.115.8",
     "greenlet>=3.1.1",
     "langchain-openai>=0.3.6",
+    "langgraph-checkpoint-postgres>=2.0.15",
+    "psycopg[binary,standard]>=3.2.5",
+    "psycopg-pool>=3.2.5",
     "sqlalchemy>=2.0.38",
 ]
