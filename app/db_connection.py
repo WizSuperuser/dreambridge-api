@@ -1,15 +1,15 @@
-import os
 import asyncio
+import os
 from functools import lru_cache
-from dotenv import load_dotenv
-from google.cloud.sql.connector import Connector, IPTypes, create_async_connector
-from psycopg.connection_async import AsyncConnection
-import sqlalchemy
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+
 import asyncpg
+import sqlalchemy
+from dotenv import load_dotenv
+from google.cloud.sql.connector import Connector, IPTypes
 from langgraph.checkpoint.postgres import PostgresSaver
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver, Conn
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg_pool import AsyncConnectionPool, ConnectionPool
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 load_dotenv()
 
@@ -18,20 +18,18 @@ db_user = os.environ["DB_USER"]
 db_pass = os.environ["DB_PASS"]
 db_name = os.environ["DB_NAME"]
 
+
 # docs: https://github.com/GoogleCloudPlatform/cloud-sql-python-connector#usage
 @lru_cache
 async def init_connection_pool(connector: Connector) -> AsyncEngine:
-
     async def get_conn() -> asyncpg.Connection:
-
         conn: asyncpg.Connection = await connector.connect_async(
             instance_connection_name,
             "asyncpg",
             user=db_user,
             password=db_pass,
             db=db_name,
-            ip_type=IPTypes.PRIVATE
-            if os.environ.get("PRIVATE_IP") else IPTypes.PUBLIC,
+            ip_type=IPTypes.PRIVATE if os.environ.get("PRIVATE_IP") else IPTypes.PUBLIC,
         )
         return conn
 
@@ -54,7 +52,8 @@ async def create_tables():
                     CREATE TABLE IF NOT EXISTS "public".users (
                     userid UUID PRIMARY KEY DEFAULT gen_random_uuid()
                 );
-                    """))
+                    """)
+            )
 
             await conn.execute(
                 sqlalchemy.text("""
@@ -73,7 +72,8 @@ async def create_tables():
                         user_id UUID REFERENCES Users(userid),
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
-                    """))
+                    """)
+            )
 
             await conn.execute(
                 sqlalchemy.text("""
@@ -83,7 +83,8 @@ async def create_tables():
                         taskid UUID REFERENCES tasks(taskid),
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
-                    """))
+                    """)
+            )
 
             await conn.commit()
 
@@ -91,7 +92,9 @@ async def create_tables():
 
 
 def setup_checkpointer():
-    connection_str = f"host=localhost port=5432 dbname={db_name} user={db_user} password={db_pass}"
+    connection_str = (
+        f"host=localhost port=5432 dbname={db_name} user={db_user} password={db_pass}"
+    )
 
     with ConnectionPool(
         conninfo=connection_str,
@@ -104,7 +107,9 @@ def setup_checkpointer():
 
 
 async def get_checkpointer():
-    connection_str = f"host=localhost port=5432 dbname={db_name} user={db_user} password={db_pass}"
+    connection_str = (
+        f"host=localhost port=5432 dbname={db_name} user={db_user} password={db_pass}"
+    )
 
     async with AsyncConnectionPool(conninfo=connection_str) as pool:
         async with pool.connection() as conn:
@@ -112,8 +117,6 @@ async def get_checkpointer():
             checkpointer = AsyncPostgresSaver(conn)
 
     return checkpointer
-
-
 
     # await connector.close_async()
 

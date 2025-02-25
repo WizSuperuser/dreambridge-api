@@ -22,9 +22,10 @@ template = ChatPromptTemplate.from_messages(
 tutor_llm = template | llm
 
 
-async def stream_llm_response(query: str):
+async def stream_llm_response(query: str, sessionid: str):
     async for chunk in tutor_llm.astream({"query": query}):
         yield chunk.content
+
 
 
 async def test_stream(query: str):

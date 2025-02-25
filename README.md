@@ -3,7 +3,7 @@ Minimum Requirements:
 - Async fastAPI server deployed to GCP
 - Test performance
 
-TODO:
+## TODO:
 - [x] Set up CD on GCP for cloud run
 - [x] Add unauthenticated CORS for iteration
 - [x] Add steps for CD
@@ -15,12 +15,14 @@ TODO:
   - [x] validate schema by checking with Madhavi
 - [x] Setup checkpointer for agent memory
 - [ ] Make api update database on queries
+- [ ] Change llm to langgraph with history summarizer
 - [ ] Test database operations
-- [ ] exception handling and second option for llm api: 24
+- [ ] Exception handling and second option for llm api: 24
 - [ ] add auth: 24
   - [ ] add auth to database
 - [ ] add logging and monitoring: 25
    - [ ] track time to first byte
+  ------------------------
 - [ ] Test performance with script: 25
 - [ ] Prompt tune: 26
 - [ ] schema check again: 26
@@ -82,6 +84,11 @@ gcloud sql users create chef \
 2. Create a database on the instance `gcloud sql databases create backend --instance={instance-name}` to create a database called backend.
 3. Add username, password, database to `.env` file. Look at .env.example file for exact variable names.
 4. Add these variables to Secret Manager on cloud, give the service account for cloud run the permissions of Secret Manager Secret Accessor and add those secrets to Cloud Run instance.
+
+## Setup checkpointer on Database
+1. Install cloud sql auth proxy in project folder: [https://cloud.google.com/sql/docs/mysql/connect-instance-auth-proxy#mac-m1](https://cloud.google.com/sql/docs/mysql/connect-instance-auth-proxy#mac-m1)
+2. Run cloud sql auth proxy `./cloud-sql-proxy <INSTANCE_CONNECTION_NAME>`
+3. Run the `setup_checkpointer()` function.
 
 ## Update tables on API calls
 1. Add persistance to chat
