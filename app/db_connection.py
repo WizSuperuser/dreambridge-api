@@ -50,41 +50,41 @@ async def create_tables():
             await conn.execute(
                 sqlalchemy.text("""
                     CREATE TABLE IF NOT EXISTS "public".users (
-                    userid UUID PRIMARY KEY DEFAULT gen_random_uuid()
+                    userid SERIAL PRIMARY KEY
                 );
                     """)
             )
 
-            await conn.execute(
-                sqlalchemy.text("""
-                    CREATE TABLE IF NOT EXISTS "public".tasks (
-                    taskid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    task VARCHAR(255) CHECK (task IN ('task1', 'task2', 'task3', 'task4', 'task5'))
-                );
-                    """)
-                # add distict for tasks here so that only one id per task
-            )
+            # await conn.execute(
+            #     sqlalchemy.text("""
+            #         CREATE TABLE IF NOT EXISTS "public".tasks (
+            #         taskid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            #         task VARCHAR(255) CHECK (task IN ('task1', 'task2', 'task3', 'task4', 'task5'))
+            #     );
+            #         """)
+            #     # add distict for tasks here so that only one id per task
+            # )
 
             await conn.execute(
                 sqlalchemy.text("""
                     CREATE TABLE IF NOT EXISTS "public".Sessions (
-                        sessionid UUID PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-                        user_id UUID REFERENCES Users(userid),
+                        sessionid SERIAL PRIMARY KEY,
+                        userid integer NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
                     """)
             )
 
-            await conn.execute(
-                sqlalchemy.text("""
-                    CREATE TABLE IF NOT EXISTS "public".messages (
-                        messageid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        sessionid UUID REFERENCES sessions(sessionid),
-                        taskid UUID REFERENCES tasks(taskid),
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    );
-                    """)
-            )
+            # await conn.execute(
+            #     sqlalchemy.text("""
+            #         CREATE TABLE IF NOT EXISTS "public".messages (
+            #             messageid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            #             sessionid UUID REFERENCES sessions(sessionid),
+            #             taskid UUID REFERENCES tasks(taskid),
+            #             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            #         );
+            #         """)
+            # )
 
             await conn.commit()
 
@@ -113,7 +113,6 @@ async def get_checkpointer():
 
     async with AsyncConnectionPool(conninfo=connection_str) as pool:
         async with pool.connection() as conn:
-            conn.autocommit = True
             checkpointer = AsyncPostgresSaver(conn)
 
     return checkpointer
@@ -122,5 +121,6 @@ async def get_checkpointer():
 
 
 if __name__ == "__main__":
-    pass
+    # pass
+    asyncio.run(create_tables())
     # setup_checkpointer()

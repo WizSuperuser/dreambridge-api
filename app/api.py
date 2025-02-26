@@ -1,24 +1,26 @@
 import sys
 import asyncio
-from dataclasses import InitVar
-from warnings import _W
+from fastapi.datastructures import Default
 from google.cloud.sql.connector import Connector
-from pydantic import BaseModel
-from fastapi import FastAPI
+from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 import sqlalchemy
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from starlette.responses import StreamingResponse
 from dotenv import load_dotenv
 
-from app.llm import stream_llm_response
+from app.llm import get_graph, stream_llm_response, Graph
 from app.db_connection import init_connection_pool
 
 load_dotenv()
 
 pool: None | AsyncEngine = None
 
+
 async def lifespan(app: FastAPI):
+    global Graph
+    Graph = await get_graph()
     loop = asyncio.get_running_loop()
     async with Connector(loop=loop) as connector:
         global pool
@@ -52,28 +54,31 @@ async def root() -> dict[str, str]:
 
 
 class Query(BaseModel):
-    userid: str
-    chatid: str | None
+    userid: int
+    sessionid: int
     message: str
 
 
 @app.post("/stream_query")
 async def wrapper(query: Query) -> StreamingResponse:
     userid = query.userid
-    chatid = query.chatid
+    sessionid = query.sessionid
     message = query.message
 
+
     async with pool.connect() as conn:
-        val = await conn.execute(sqlalchemy.text(f"select exists(select 1 from sessions where sessionid::text='{chatid}')"))
-        if val.fetchall()[0][0] == False:
-            data = ({"user_id": userid})
-            await conn.execute(sqlalchemy.text(
-                f"INSERT INTO session(sessionid, user_id, created_at) VALUES(DEFAULT, {userid}, DEFAULT);"
-            ))
-            await conn.commit()
+        await conn.execute(sqlalchemy.text(
+            f"INSERT INTO users(userid) VALUES({userid}) ON CONFLICT (userid) DO NOTHING;"
+        ))
+
+        await conn.execute(sqlalchemy.text(
+            f"INSERT INTO Sessions(sessionid, userid, created_at) VALUES(DEFAULT, {userid}, DEFAULT) ON CONFLICT (sessionid) DO NOTHING;"
+        ))
+        await conn.commit()
+
+
 
 
     response = StreamingResponse(
-        stream_llm_response(message, chatid), media_type="text/event-stream"
-    )
+        stream_llm_response(message, sessionid, userid), media_type="text/event-stream")
     return response

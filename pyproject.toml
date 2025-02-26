@@ -13,4 +13,5 @@ dependencies = [
     "psycopg[binary,standard]>=3.2.5",
     "psycopg-pool>=3.2.5",
     "sqlalchemy>=2.0.38",
+    "langgraph>=0.2.74",
 ]
