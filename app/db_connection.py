@@ -22,6 +22,7 @@ db_name = os.environ["DB_NAME"]
 # docs: https://github.com/GoogleCloudPlatform/cloud-sql-python-connector#usage
 @lru_cache
 async def init_connection_pool(connector: Connector) -> AsyncEngine:
+
     async def get_conn() -> asyncpg.Connection:
         conn: asyncpg.Connection = await connector.connect_async(
             instance_connection_name,
@@ -29,7 +30,8 @@ async def init_connection_pool(connector: Connector) -> AsyncEngine:
             user=db_user,
             password=db_pass,
             db=db_name,
-            ip_type=IPTypes.PRIVATE if os.environ.get("PRIVATE_IP") else IPTypes.PUBLIC,
+            ip_type=IPTypes.PRIVATE
+            if os.environ.get("PRIVATE_IP") else IPTypes.PUBLIC,
         )
         return conn
 
@@ -49,16 +51,15 @@ async def create_tables():
         async with pool.connect() as conn:
             await conn.execute(
                 sqlalchemy.text("""
-                    CREATE TABLE IF NOT EXISTS "public".users (
-                    userid SERIAL PRIMARY KEY
+                    CREATE TABLE IF NOT EXISTS "public".Users (
+                    user_id integer PRIMARY KEY
                 );
-                    """)
-            )
+                    """))
 
             # await conn.execute(
             #     sqlalchemy.text("""
-            #         CREATE TABLE IF NOT EXISTS "public".tasks (
-            #         taskid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            #         CREATE TABLE IF NOT EXISTS "public".Tasks (
+            #         taskid integer PRIMARY KEY,
             #         task VARCHAR(255) CHECK (task IN ('task1', 'task2', 'task3', 'task4', 'task5'))
             #     );
             #         """)
@@ -68,19 +69,18 @@ async def create_tables():
             await conn.execute(
                 sqlalchemy.text("""
                     CREATE TABLE IF NOT EXISTS "public".Sessions (
-                        sessionid SERIAL PRIMARY KEY,
-                        userid integer NOT NULL,
+                        session_id integer PRIMARY KEY,
+                        user_id integer NOT NULL REFERENCES Users(user_id),
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
-                    """)
-            )
+                    """))
 
             # await conn.execute(
             #     sqlalchemy.text("""
-            #         CREATE TABLE IF NOT EXISTS "public".messages (
-            #             messageid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            #             sessionid UUID REFERENCES sessions(sessionid),
-            #             taskid UUID REFERENCES tasks(taskid),
+            #         CREATE TABLE IF NOT EXISTS "public".Messages (
+            #             messageid integer PRIMARY KEY,
+            #             session_id integer REFERENCES Sessions(session_id),
+            #             taskid integer REFERENCES Tasks(taskid),
             #             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             #         );
             #         """)
@@ -96,9 +96,7 @@ def setup_checkpointer():
         f"host=localhost port=5432 dbname={db_name} user={db_user} password={db_pass}"
     )
 
-    with ConnectionPool(
-        conninfo=connection_str,
-    ) as pool:
+    with ConnectionPool(conninfo=connection_str, ) as pool:
         with pool.connection() as conn:
             conn.autocommit = True
 
@@ -111,16 +109,22 @@ async def get_checkpointer():
         f"host=localhost port=5432 dbname={db_name} user={db_user} password={db_pass}"
     )
 
-    async with AsyncConnectionPool(conninfo=connection_str) as pool:
-        async with pool.connection() as conn:
-            checkpointer = AsyncPostgresSaver(conn)
+    pool = AsyncConnectionPool(conninfo=connection_str, open=False)
+    await pool.open()
+    checkpointer = AsyncPostgresSaver(pool)
 
-    return checkpointer
+    return checkpointer, pool
 
     # await connector.close_async()
 
+async def test_checkpointer():
+
+    checkpointer, pool = await get_checkpointer()
+    val = await checkpointer.aget(config={"configurable": {"thread_id": 1}})
+    print(val)
 
 if __name__ == "__main__":
-    # pass
-    asyncio.run(create_tables())
+    pass
+    # asyncio.run(create_tables())
     # setup_checkpointer()
+    # asyncio.run(test_checkpointer())

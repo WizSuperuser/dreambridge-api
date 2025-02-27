@@ -14,8 +14,10 @@ Minimum Requirements:
   - [x] extra informaiton
   - [x] validate schema by checking with Madhavi
 - [x] Setup checkpointer for agent memory
-- [ ] Make api update database on queries
-- [ ] Change llm to langgraph with history summarizer
+- [x] Make api update database on queries
+- [x] Change llm to langgraph with history summarizer
+- [x] Add backup llm
+- [ ] Deploy new version to GCP with cloud-sql-proxy
 - [ ] Test database operations
 - [ ] Exception handling and second option for llm api: 24
 - [ ] add auth: 24
@@ -87,7 +89,7 @@ gcloud sql users create chef \
 4. Add these variables to Secret Manager on cloud, give the service account for cloud run the permissions of Secret Manager Secret Accessor and add those secrets to Cloud Run instance.
 
 ## Setup checkpointer on Database
-1. Install cloud sql auth proxy in project folder: [https://cloud.google.com/sql/docs/mysql/connect-instance-auth-proxy#mac-m1](https://cloud.google.com/sql/docs/mysql/connect-instance-auth-proxy#mac-m1)
+1. Install cloud sql auth proxy in project folder: [https://cloud.google.com/sql/docs/mysql/connect-instance-auth-proxy#mac-m1)
 2. Run cloud sql auth proxy `./cloud-sql-proxy <INSTANCE_CONNECTION_NAME>`
 3. Run the `setup_checkpointer()` function.
 
