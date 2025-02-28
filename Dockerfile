@@ -7,7 +7,7 @@ RUN apk add --no-cache \
     libffi-dev \
     openssl-dev \
     cargo \
-    rust \
+    rust
     # curl
 
 RUN pip install --upgrade pip
