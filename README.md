@@ -17,21 +17,21 @@ Minimum Requirements:
 - [x] Make api update database on queries
 - [x] Change llm to langgraph with history summarizer
 - [x] Add backup llm
-- [ ] Deploy new version to GCP with cloud-sql-proxy
-- [ ] Test database operations
-- [ ] Exception handling and second option for llm api: 24
-- [ ] add auth: 24
+- [ ] Deploy new version to GCP with cloud-sql-proxy: 28
+- [ ] Test database operations: 28
+- [ ] Exception handling: 28
+- [ ] add auth: 3
   - [ ] add auth to database
-- [ ] add logging and monitoring: 25
+- [ ] add logging and monitoring: 4
    - [ ] api call level id
    - [ ] track time to first byte
   ------------------------
-- [ ] Test performance with script: 25
-- [ ] Prompt tune: 26
-- [ ] schema check again: 26
+- [ ] Robust test functionality and performance with script: 5
+- [ ] Prompt tune: 5
+- [ ] schema check again: 5
+- [ ] Edit CORS: 6/whenever client team is available
+- [ ] Test integration with frontend: 6/whenever client team is available
 - [ ] Performance tune with caching
-- [ ] Add CORS: 27
-- [ ] Test integration with frontend
 - [ ] CI
 - [ ] private IP for cloud sql
 
