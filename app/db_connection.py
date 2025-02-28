@@ -18,6 +18,7 @@ db_user = os.environ["DB_USER"]
 db_pass = os.environ["DB_PASS"]
 db_name = os.environ["DB_NAME"]
 db_ip_addr = os.environ["DB_IP_ADDR"]
+db_unix_socket = f"/cloudsql/{instance_connection_name}"
 
 
 # docs: https://github.com/GoogleCloudPlatform/cloud-sql-python-connector#usage
@@ -93,28 +94,39 @@ async def create_tables():
 
 
 def setup_checkpointer():
+
+    # connection_str = f"postgresql://{db_user}:{db_pass}@/{db_name}?host={db_unix_socket}"
     connection_str = (
-        f"host={db_ip_addr} port=5432 dbname={db_name} user={db_user} password={db_pass}"
+        f"host={db_unix_socket} port=5432 dbname={db_name} user={db_user} password={db_pass}"
     )
 
-    with ConnectionPool(conninfo=connection_str, ) as pool:
-        with pool.connection() as conn:
-            conn.autocommit = True
+    try:
+        with ConnectionPool(conninfo=connection_str, ) as pool:
+            with pool.connection() as conn:
+                conn.autocommit = True
 
-            checkpointer = PostgresSaver(conn)
-            checkpointer.setup()
+                checkpointer = PostgresSaver(conn)
+                checkpointer.setup()
+
+    except Exception as e:
+            print("Error while trying to set up checkpointer: {e}")
 
 
 async def get_checkpointer():
+    # connection_str = f"postgresql+psycopg://{db_user}:{db_pass}@/{db_name}?unix_socket={db_unix_socket}/test-dreambridge"
+
     connection_str = (
-        f"host={db_ip_addr} port=5432 dbname={db_name} user={db_user} password={db_pass}"
+        f"host={db_unix_socket} port=5432 dbname={db_name} user={db_user} password={db_pass}"
     )
 
-    pool = AsyncConnectionPool(conninfo=connection_str, open=False)
-    await pool.open()
-    checkpointer = AsyncPostgresSaver(pool)
+    try:
+        pool = AsyncConnectionPool(conninfo=connection_str, open=False)
+        await pool.open()
+        checkpointer = AsyncPostgresSaver(pool)
 
-    return checkpointer, pool
+        return checkpointer, pool
+    except Exception as e:
+        print("Error while trying to set up checkpointer: {e}")
 
     # await connector.close_async()
 
