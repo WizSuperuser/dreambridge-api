@@ -294,7 +294,7 @@ requires-dist = [
     { name = "langchain-openai", specifier = ">=0.3.6" },
     { name = "langgraph", specifier = ">=0.2.74" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=2.0.15" },
-    { name = "psycopg", extras = ["binary", "standard"], specifier = ">=3.2.5" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.2.5" },
     { name = "psycopg-pool", specifier = ">=3.2.5" },
     { name = "sqlalchemy", specifier = ">=2.0.38" },
 ]

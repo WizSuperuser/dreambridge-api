@@ -17,6 +17,7 @@ instance_connection_name = os.environ["INSTANCE_CONNECTION_NAME"]
 db_user = os.environ["DB_USER"]
 db_pass = os.environ["DB_PASS"]
 db_name = os.environ["DB_NAME"]
+db_ip_addr = os.environ["DB_IP_ADDR"]
 
 
 # docs: https://github.com/GoogleCloudPlatform/cloud-sql-python-connector#usage
@@ -93,7 +94,7 @@ async def create_tables():
 
 def setup_checkpointer():
     connection_str = (
-        f"host=localhost port=5432 dbname={db_name} user={db_user} password={db_pass}"
+        f"host={db_ip_addr} port=5432 dbname={db_name} user={db_user} password={db_pass}"
     )
 
     with ConnectionPool(conninfo=connection_str, ) as pool:
@@ -106,7 +107,7 @@ def setup_checkpointer():
 
 async def get_checkpointer():
     connection_str = (
-        f"host=localhost port=5432 dbname={db_name} user={db_user} password={db_pass}"
+        f"host={db_ip_addr} port=5432 dbname={db_name} user={db_user} password={db_pass}"
     )
 
     pool = AsyncConnectionPool(conninfo=connection_str, open=False)
@@ -124,7 +125,7 @@ async def test_checkpointer():
     print(val)
 
 if __name__ == "__main__":
-    pass
+    # pass
     # asyncio.run(create_tables())
-    # setup_checkpointer()
+    setup_checkpointer()
     # asyncio.run(test_checkpointer())
