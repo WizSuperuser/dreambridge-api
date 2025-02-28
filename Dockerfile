@@ -8,7 +8,7 @@ RUN apk add --no-cache \
     openssl-dev \
     cargo \
     rust \
-    curl
+    # curl
 
 RUN pip install --upgrade pip
 
@@ -18,13 +18,13 @@ COPY ./requirements.txt /root/requirements.txt
 
 RUN pip install --no-cache-dir --upgrade -r /root/requirements.txt
 
-RUN curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.15.1/cloud-sql-proxy.linux.amd64
+# RUN curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.15.1/cloud-sql-proxy.linux.amd64
 
-RUN chmod +x cloud-sql-proxy
+# RUN chmod +x cloud-sql-proxy
 
-ARG INSTANCE_CONNECTION_NAME=$INSTANCE_CONNECTION_NAME
+# ARG INSTANCE_CONNECTION_NAME=$INSTANCE_CONNECTION_NAME
 
-RUN ./cloud-sql-proxy $INSTANCE_CONNECTION_NAME
+# RUN ./cloud-sql-proxy $INSTANCE_CONNECTION_NAME
 
 COPY ./app /root/app
 
