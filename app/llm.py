@@ -127,7 +127,10 @@ pool: AsyncEngine | None = None
 async def lifespan(app: APIRouter):
     global graph
     global checkpointer_pool
-    graph, checkpointer_pool = await get_graph()
+    try:
+        graph, checkpointer_pool = await get_graph()
+    except Exception as e:
+        print(f"Exception when trying to connect checkpointer: {e}", file=sys.stderr)
     loop = asyncio.get_running_loop()
     async with Connector(loop=loop) as connector:
         global pool

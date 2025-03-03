@@ -17,11 +17,14 @@ Minimum Requirements:
 - [x] Make api update database on queries
 - [x] Change llm to langgraph with history summarizer
 - [x] Add backup llm
-- [ ] Deploy new version to GCP with cloud-sql-proxy: 28
+- [x] Deploy new version to GCP with cloud-sql-proxy: 28
 - [ ] Test database operations: 28
 - [ ] Exception handling: 28
 - [ ] add auth: 3
-  - [ ] add auth to database
+  - [ ] add auth table to database
+  - [ ] generate root user and dreambrdige user
+  - [ ] dependency injection for each endpoint
+  - [ ] make it so that the table is immutable?
 - [ ] add logging and monitoring: 4
    - [ ] api call level id
    - [ ] track time to first byte

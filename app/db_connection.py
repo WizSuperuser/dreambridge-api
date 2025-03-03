@@ -13,13 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 load_dotenv()
 
+LOCAL = bool(os.environ.get("LOCAL"))
 instance_connection_name = os.environ["INSTANCE_CONNECTION_NAME"]
 db_user = os.environ["DB_USER"]
 db_pass = os.environ["DB_PASS"]
 db_name = os.environ["DB_NAME"]
-db_ip_addr = os.environ["DB_IP_ADDR"]
-db_unix_socket = f"/cloudsql/{instance_connection_name}"
-
+db_unix_socket = f"/cloudsql/{instance_connection_name}" if not LOCAL else "localhost"
+port = 5432 if not LOCAL else 5412
 
 # docs: https://github.com/GoogleCloudPlatform/cloud-sql-python-connector#usage
 @lru_cache
@@ -37,7 +37,7 @@ async def init_connection_pool(connector: Connector) -> AsyncEngine:
         )
         return conn
 
-    pool = create_async_engine(
+    pool: AsyncEngine = create_async_engine(
         "postgresql+asyncpg://",
         async_creator=get_conn,
     )
@@ -88,16 +88,25 @@ async def create_tables():
             #         """)
             # )
 
+            await conn.execute(
+                sqlalchemy.text("""
+                    CREATE TABLE IF NOT EXISTS "public".Auth (
+                        auth_id integer PRIMARY KEY,
+                        organization TEXT UNIQUE NOT NULL,
+                        hashed_password TEXT NOT NULL
+                    )
+                    """)
+            )
+
             await conn.commit()
 
         await pool.dispose()
 
 
 def setup_checkpointer():
-
     # connection_str = f"postgresql://{db_user}:{db_pass}@/{db_name}?host={db_unix_socket}"
     connection_str = (
-        f"host={db_unix_socket} port=5432 dbname={db_name} user={db_user} password={db_pass}"
+        f"host={db_unix_socket} port={port} dbname={db_name} user={db_user} password={db_pass}"
     )
 
     try:
@@ -112,11 +121,10 @@ def setup_checkpointer():
             print("Error while trying to set up checkpointer: {e}")
 
 
+@lru_cache
 async def get_checkpointer():
-    # connection_str = f"postgresql+psycopg://{db_user}:{db_pass}@/{db_name}?unix_socket={db_unix_socket}/test-dreambridge"
-
     connection_str = (
-        f"host={db_unix_socket} port=5432 dbname={db_name} user={db_user} password={db_pass}"
+        f"host={db_unix_socket} port={port} dbname={db_name} user={db_user} password={db_pass}"
     )
 
     try:
@@ -131,7 +139,6 @@ async def get_checkpointer():
     # await connector.close_async()
 
 async def test_checkpointer():
-
     checkpointer, pool = await get_checkpointer()
     val = await checkpointer.aget(config={"configurable": {"thread_id": 1}})
     print(val)
@@ -139,5 +146,5 @@ async def test_checkpointer():
 if __name__ == "__main__":
     # pass
     # asyncio.run(create_tables())
-    setup_checkpointer()
-    # asyncio.run(test_checkpointer())
+    # setup_checkpointer()
+    asyncio.run(test_checkpointer())
