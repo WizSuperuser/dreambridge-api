@@ -6,8 +6,9 @@ from typing import Annotated
 
 import sqlalchemy
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from google.cloud.sql.connector import Connector
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
@@ -18,6 +19,7 @@ from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 
+from app.auth import authenticate_org
 from app.db_connection import get_checkpointer, init_connection_pool
 
 BUFFER = 2
@@ -26,7 +28,6 @@ load_dotenv()
 
 llm = ChatOpenAI(model="gpt-4o-mini")
 llm_backup = ChatGroq(model="llama-3.3-70b-versatile", stop_sequences=None)
-
 
 
 class State(MessagesState):
@@ -50,11 +51,8 @@ def responder(state: State):
         Recent conversation:
         """
 
-        prompt += (
-            messages[:BUFFER]
-            + [HumanMessage(content=summary_message)]
-            + messages[BUFFER:]
-        )
+        prompt += (messages[:BUFFER] +
+                   [HumanMessage(content=summary_message)] + messages[BUFFER:])
 
     else:
         prompt += messages
@@ -85,7 +83,9 @@ def summarizer(state: State):
             f"This is the summary of the conversation to date: {summary}\n\n"
             "Be concise and extend the summary by taking into account the new messages above. Make a note of any observations on learner reactions and understanding as well:"
         )
-        messages = state["messages"][BUFFER:] + [HumanMessage(content=summary_message)]
+        messages = state["messages"][BUFFER:] + [
+            HumanMessage(content=summary_message)
+        ]
     else:
         summary_message = "\nCreate a summary of the conversation above. Make a note of any observations on learner reactions and understanding as well:"
         messages = state["messages"] + [summary_message]
@@ -108,9 +108,10 @@ async def get_graph():
     workflow.add_node("summarize", summarizer)
 
     workflow.add_edge(START, "response")
-    workflow.add_conditional_edges(
-        "response", if_summarize, {"summarize": "summarize", END: END}
-    )
+    workflow.add_conditional_edges("response", if_summarize, {
+        "summarize": "summarize",
+        END: END
+    })
     workflow.add_edge("summarize", END)
 
     checkpointer, pool = await get_checkpointer()
@@ -119,9 +120,9 @@ async def get_graph():
     return graph, pool
 
 
-graph: CompiledStateGraph | None = None
+graph: CompiledStateGraph
 checkpointer_pool = None
-pool: AsyncEngine | None = None
+pool: AsyncEngine
 
 
 async def lifespan(app: APIRouter):
@@ -130,14 +131,16 @@ async def lifespan(app: APIRouter):
     try:
         graph, checkpointer_pool = await get_graph()
     except Exception as e:
-        print(f"Exception when trying to connect checkpointer: {e}", file=sys.stderr)
+        print(f"Exception when trying to connect checkpointer: {e}",
+              file=sys.stderr)
     loop = asyncio.get_running_loop()
     async with Connector(loop=loop) as connector:
         global pool
         try:
             pool = await init_connection_pool(connector)
         except Exception as e:
-            print(f"Exception when trying to connect to database: {e}", file=sys.stderr)
+            print(f"Exception when trying to connect to database: {e}",
+                  file=sys.stderr)
     yield
     if checkpointer_pool:
         await checkpointer_pool.close()
@@ -154,21 +157,22 @@ async def db_health() -> dict[str, str]:
         val = await conn.execute(
             sqlalchemy.text("""
                 SELECT NOW();
-                """)
-        )
+                """))
     return {"Hello": f"{val.fetchall()}"}
+
 
 async def stream_llm_response(query: str, session_id: int, user_id: int):
     config = {"configurable": {"thread_id": str(session_id)}}
     input = HumanMessage(content=query)
     async for event in graph.astream_events(
         {"messages": input},
-        config,
-        version="v2",
+            config,
+            version="v2",
     ):
-        if event["event"] == "on_chat_model_stream":
+        if (event["event"] == "on_chat_model_stream" and event.get(
+                "metadata", {}).get("langgraph_node") == "response"):
             data = event["data"]
-            yield data["chunk"].content
+            yield data.get("chunk", "").content
 
 
 class Query(BaseModel):
@@ -178,7 +182,20 @@ class Query(BaseModel):
 
 
 @router.post("/stream-query")
-async def wrapper(query: Query) -> StreamingResponse:
+async def wrapper(
+    query: Query,
+    username: str,
+    password: str,
+) -> StreamingResponse:
+    form_data = OAuth2PasswordRequestForm(
+        username=username,
+        password=password,
+    )
+    if not await authenticate_org(pool, form_data):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
     user_id = query.user_id
     session_id = query.session_id
     message = query.message
@@ -187,14 +204,12 @@ async def wrapper(query: Query) -> StreamingResponse:
         await conn.execute(
             sqlalchemy.text(
                 f"INSERT INTO Users(user_id) VALUES({user_id}) ON CONFLICT (user_id) DO NOTHING;"
-            )
-        )
+            ))
 
         await conn.execute(
             sqlalchemy.text(
                 f"INSERT INTO Sessions(session_id, user_id, created_at) VALUES({session_id}, {user_id}, DEFAULT) ON CONFLICT (session_id) DO NOTHING;"
-            )
-        )
+            ))
         await conn.commit()
 
     response = StreamingResponse(

@@ -18,13 +18,15 @@ Minimum Requirements:
 - [x] Change llm to langgraph with history summarizer
 - [x] Add backup llm
 - [x] Deploy new version to GCP with cloud-sql-proxy: 28
-- [ ] Test database operations: 28
+- [x] Test database operations: 28
 - [ ] Exception handling: 28
 - [ ] add auth: 3
-  - [ ] add auth table to database
-  - [ ] generate root user and dreambrdige user
-  - [ ] dependency injection for each endpoint
+  - [x] add auth table to database
+  - [x] generate root user and dreambrdige user
+  - [x] dependency injection for stream endpoint
   - [ ] make it so that the table is immutable?
+  - [ ] prevent sql injection
+- [ ] Stop deleting messages in graph state
 - [ ] add logging and monitoring: 4
    - [ ] api call level id
    - [ ] track time to first byte

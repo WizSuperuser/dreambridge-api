@@ -91,7 +91,7 @@ async def create_tables():
             await conn.execute(
                 sqlalchemy.text("""
                     CREATE TABLE IF NOT EXISTS "public".Auth (
-                        auth_id integer PRIMARY KEY,
+                        auth_id SERIAL PRIMARY KEY,
                         organization TEXT UNIQUE NOT NULL,
                         hashed_password TEXT NOT NULL
                     )
@@ -101,6 +101,7 @@ async def create_tables():
             await conn.commit()
 
         await pool.dispose()
+
 
 
 def setup_checkpointer():
@@ -145,6 +146,6 @@ async def test_checkpointer():
 
 if __name__ == "__main__":
     # pass
-    # asyncio.run(create_tables())
+    asyncio.run(create_tables())
     # setup_checkpointer()
-    asyncio.run(test_checkpointer())
+    # asyncio.run(test_checkpointer())
