@@ -26,7 +26,7 @@ Minimum Requirements:
   - [x] dependency injection for stream endpoint
   - [ ] make it so that the table is immutable?
   - [ ] prevent sql injection
-- [ ] Stop deleting messages in graph state
+- [x] Stop deleting messages in graph state
 - [ ] add logging and monitoring: 4
    - [ ] api call level id
    - [ ] track time to first byte
@@ -95,31 +95,33 @@ gcloud sql users create chef \
 
 ## Setup checkpointer on Database
 1. Install cloud sql auth proxy in project folder: [https://cloud.google.com/sql/docs/mysql/connect-instance-auth-proxy#mac-m1)
-2. Run cloud sql auth proxy `./cloud-sql-proxy <INSTANCE_CONNECTION_NAME>`
+2. Run cloud sql auth proxy `./cloud-sql-proxy -p <port> <INSTANCE_CONNECTION_NAME>`
 3. Run the `setup_checkpointer()` function.
 
 
 ## Schema
 Session table
-|-sessionid
-|-userid
-|-heading?
+|-session_id
+|-user_id
 
 Messages table
-|-messageid
-|-sessionid
-|-taskid
+|-message_id
+|-session_id
+|-task_id
 
 Tasks table
-|-taskid
+|-task_id
 |-task
 
 Users Table
-|-userid
+|-user_id
+
+Auth Table
+|-auth_id
+|-organization
+|-hashed_password
 
 Langgraph checkpointer
-|-sessionid
-|-messages
 
 
 ## Add Auth

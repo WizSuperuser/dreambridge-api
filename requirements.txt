@@ -9,3 +9,4 @@ sqlalchemy>=2.0.38
 langgraph>=0.2.74
 langchain-groq>=0.2.4
 argon2-cffi>=23.1.0
+pyjwt>=2.10.1
