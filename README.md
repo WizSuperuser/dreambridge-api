@@ -20,7 +20,7 @@ Minimum Requirements:
 - [x] Deploy new version to GCP with cloud-sql-proxy: 28
 - [x] Test database operations: 28
 - [ ] Exception handling: 28
-- [ ] add auth: 3
+- [x] add auth: 3
   - [x] add auth table to database
   - [x] generate root user and dreambrdige user
   - [x] dependency injection for stream endpoint
@@ -98,13 +98,6 @@ gcloud sql users create chef \
 2. Run cloud sql auth proxy `./cloud-sql-proxy <INSTANCE_CONNECTION_NAME>`
 3. Run the `setup_checkpointer()` function.
 
-## Update tables on API calls
-1. Add persistance to chat
-
-## Test that tables are getting properly updated
-
-
-
 
 ## Schema
 Session table
@@ -127,3 +120,11 @@ Users Table
 Langgraph checkpointer
 |-sessionid
 |-messages
+
+
+## Add Auth
+1. Create an Auth table in the database with username and password columns.
+2. Use argon-cffi library in python for hashing passwords
+3. Authenticate user on each stream llm query
+4. Create 2 users: root wizlearnr user and a dreambridge user
+5. Credentials for each are stored in GCP secrets manager

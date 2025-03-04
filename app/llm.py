@@ -4,11 +4,13 @@ import sys
 from contextlib import asynccontextmanager
 from typing import Annotated
 
+import jwt
+from jwt.exceptions import InvalidTokenError
 import sqlalchemy
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from google.cloud.sql.connector import Connector
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
@@ -19,10 +21,8 @@ from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 
-from app.auth import authenticate_org
+from app.auth import ALGORITHM, SECRET_KEY, authenticate_org, check_for_org, create_access_token, Token
 from app.db_connection import get_checkpointer, init_connection_pool
-
-BUFFER = 2
 
 load_dotenv()
 
@@ -32,6 +32,7 @@ llm_backup = ChatGroq(model="llama-3.3-70b-versatile", stop_sequences=None)
 
 class State(MessagesState):
     summary: str
+    last_summary: int
 
 
 def responder(state: State):
@@ -43,16 +44,16 @@ def responder(state: State):
     prompt = [SystemMessage(prompt)]
 
     messages = state["messages"]
+    last_summary = state.get("last_summary", 0)
     summary = state.get("summary", "")
     if summary:
         summary_message = f"""
-        Above is the original question and response.
-        Summary of the conversation that followed: {summary}
+        Summary of the conversation so far: {summary}
         Recent conversation:
         """
-
-        prompt += (messages[:BUFFER] +
-                   [HumanMessage(content=summary_message)] + messages[BUFFER:])
+        messages_in_prompt = last_summary if last_summary > 0 else 2
+        prompt += ([HumanMessage(content=summary_message)] +
+                   messages[:messages_in_prompt])
 
     else:
         prompt += messages
@@ -61,16 +62,14 @@ def responder(state: State):
         response = llm.invoke(prompt)
     except Exception:
         response = llm_backup.invoke(prompt)
-    return {"messages": response}
+    return {"messages": response, "last_summary": last_summary + 2}
 
 
 def if_summarize(state: State):
     """Return whether to summarize based on length of unsummarized messages."""
-    messages = state["messages"]
-
     SUMMARIZE_AFTER_MESSAGES = 6
 
-    if len(messages) > SUMMARIZE_AFTER_MESSAGES:
+    if state["last_summary"] > SUMMARIZE_AFTER_MESSAGES:
         return "summarize"
     return END
 
@@ -83,7 +82,7 @@ def summarizer(state: State):
             f"This is the summary of the conversation to date: {summary}\n\n"
             "Be concise and extend the summary by taking into account the new messages above. Make a note of any observations on learner reactions and understanding as well:"
         )
-        messages = state["messages"][BUFFER:] + [
+        messages = state["messages"][:state["last_summary"]] + [
             HumanMessage(content=summary_message)
         ]
     else:
@@ -95,11 +94,7 @@ def summarizer(state: State):
     except Exception:
         response = llm_backup.invoke(messages)
 
-    delete_messages = [
-        RemoveMessage(id=str(m.id)) for m in state["messages"][BUFFER:-BUFFER]
-    ]
-
-    return {"summary": response.content, "messages": delete_messages}
+    return {"summary": response.content, "last_summary": 0}
 
 
 async def get_graph():
@@ -161,6 +156,9 @@ async def db_health() -> dict[str, str]:
     return {"Hello": f"{val.fetchall()}"}
 
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
 async def stream_llm_response(query: str, session_id: int, user_id: int):
     config = {"configurable": {"thread_id": str(session_id)}}
     input = HumanMessage(content=query)
@@ -172,7 +170,8 @@ async def stream_llm_response(query: str, session_id: int, user_id: int):
         if (event["event"] == "on_chat_model_stream" and event.get(
                 "metadata", {}).get("langgraph_node") == "response"):
             data = event["data"]
-            yield data.get("chunk", "").content
+            if chunk := data.get("chunk"):
+                yield chunk.content
 
 
 class Query(BaseModel):
@@ -181,21 +180,45 @@ class Query(BaseModel):
     message: str
 
 
-@router.post("/stream-query")
-async def wrapper(
-    query: Query,
-    username: str,
-    password: str,
-) -> StreamingResponse:
-    form_data = OAuth2PasswordRequestForm(
-        username=username,
-        password=password,
-    )
+@router.post("/token")
+async def login_for_token(
+    form_data: Annotated[OAuth2PasswordRequestForm,
+                         Depends()], ) -> dict:
     if not await authenticate_org(pool, form_data):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
+    access_token = create_access_token(data={"sub": form_data.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+async def get_current_org(
+    token: Annotated[str, Depends(oauth2_scheme)],
+):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except InvalidTokenError:
+        raise credentials_exception
+    except Exception as e:
+        print("Exception while trying to get current org: {e}", file=sys.stderr)
+    if check_for_org(pool, username):
+        return username
+
+
+
+@router.post("/stream-query")
+async def wrapper(
+    token: Annotated[str, Depends(get_current_org)],
+    query: Query,
+) -> StreamingResponse:
     user_id = query.user_id
     session_id = query.session_id
     message = query.message

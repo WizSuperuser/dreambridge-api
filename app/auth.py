@@ -1,9 +1,12 @@
+from datetime import datetime, timedelta
 import sys
 import os
 import asyncio
 import sqlalchemy
+import jwt
 from sqlalchemy.ext.asyncio import AsyncEngine
 from argon2 import PasswordHasher
+from pydantic import BaseModel
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from google.cloud.sql.connector import Connector
@@ -11,13 +14,29 @@ from dotenv import load_dotenv
 
 from app.db_connection import init_connection_pool
 
+SECRET_KEY = os.environ.get("SECRET_KEY")
+ALGORITHM = "HS512"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
 ph = PasswordHasher()
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+def create_access_token(data: dict):
+    to_encode: dict = data.copy()
+    expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
 async def authenticate_org(
     pool: AsyncEngine,
     form_data: OAuth2PasswordRequestForm = Depends(),
-) -> bool:
+) -> bool | str:
     try:
         async with pool.connect() as conn:
             result = await conn.execute(
@@ -28,7 +47,7 @@ async def authenticate_org(
             )
             org = result.one()
             if org and len(org) == 2 and ph.verify(org[1], form_data.password):
-                return True
+                return org[0]
             return False
     except Exception as e:
         print(f"Exception while trying to authenticate user: {e}", file=sys.stderr)
@@ -49,6 +68,24 @@ async def add_org(
                 await conn.commit()
     except Exception as e:
         print(f"Exception occured while trying to add org to auth database: {e}", file=sys.stderr)
+
+
+async def check_for_org(
+    pool: AsyncEngine,
+    organization: str,
+) -> bool:
+    try:
+        async with pool.connect() as conn:
+            result = await conn.execute(sqlalchemy.text(f"""
+                SELECT organization FROM "public".Auth WHERE organization = '{organization}'
+                """))
+            if result.scalar_one():
+                return True
+            return False
+    except Exception as e:
+        print(f"Exception occured while trying to check if org exists: {e}", file=sys.stderr)
+        return False
+
 
 
 async def main():
