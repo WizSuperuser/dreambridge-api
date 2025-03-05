@@ -146,7 +146,7 @@ async def lifespan(app: APIRouter):
 router = APIRouter(lifespan=lifespan)
 
 
-@router.get("/health-check")
+@router.get("/health-check", tags=["database"])
 async def db_health() -> dict[str, str]:
     async with pool.connect() as conn:
         val = await conn.execute(
@@ -170,8 +170,7 @@ async def stream_llm_response(query: str, session_id: int, user_id: int):
         if (event["event"] == "on_chat_model_stream" and event.get(
                 "metadata", {}).get("langgraph_node") == "response"):
             data = event["data"]
-            if chunk := data.get("chunk"):
-                yield chunk.content
+            yield data["chunk"].content
 
 
 class Query(BaseModel):
@@ -180,7 +179,7 @@ class Query(BaseModel):
     message: str
 
 
-@router.post("/token")
+@router.post("/token", tags=["auth"])
 async def login_for_token(
     form_data: Annotated[OAuth2PasswordRequestForm,
                          Depends()], ) -> dict:
@@ -192,9 +191,7 @@ async def login_for_token(
     access_token = create_access_token(data={"sub": form_data.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
-async def get_current_org(
-    token: Annotated[str, Depends(oauth2_scheme)],
-):
+async def get_current_org(token: Annotated[str, Depends(oauth2_scheme)]):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -209,12 +206,12 @@ async def get_current_org(
         raise credentials_exception
     except Exception as e:
         print("Exception while trying to get current org: {e}", file=sys.stderr)
-    if check_for_org(pool, username):
+    if await check_for_org(pool, username):
         return username
 
 
 
-@router.post("/stream-query")
+@router.post("/stream-query", tags=["llm"])
 async def wrapper(
     token: Annotated[str, Depends(get_current_org)],
     query: Query,
