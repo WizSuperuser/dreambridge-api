@@ -53,7 +53,7 @@ def responder(state: State):
         """
         messages_in_prompt = last_summary if last_summary > 0 else 2
         prompt += ([HumanMessage(content=summary_message)] +
-                   messages[:messages_in_prompt])
+                   messages[-messages_in_prompt:])
 
     else:
         prompt += messages

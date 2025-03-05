@@ -18,4 +18,5 @@ dependencies = [
     "argon2-cffi>=23.1.0",
     "pyjwt>=2.10.1",
     "prometheus-fastapi-instrumentator>=7.0.2",
+    "google-cloud-logging>=3.11.4",
 ]
