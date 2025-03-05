@@ -9,7 +9,7 @@ password = os.environ.get("ROOT_PASSWORD")
 production_url = os.environ.get("PRODUCTION_URL")
 url = "http://localhost:8000"
 
-with httpx.Client(base_url=url) as client:
+with httpx.Client(base_url=production_url) as client:
     response = client.post(
         "/token",
         data={"username": username, "password": password},
@@ -24,7 +24,7 @@ token = response.json()["access_token"]
 
 with httpx.stream(
     "POST",
-    f"{url}/stream-query",
+    f"{production_url}/stream-query",
     json={
         "user_id": 12,
         "session_id": 1,

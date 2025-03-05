@@ -60,8 +60,13 @@ def responder(state: State):
 
     try:
         response = llm.invoke(prompt)
-    except Exception:
-        response = llm_backup.invoke(prompt)
+        if not response:
+            response = llm_backup.invoke(prompt)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_408_REQUEST_TIMEOUT,
+            detail=f"response llm call didn't work with exception: {e}"
+        )
     return {"messages": response, "last_summary": last_summary + 2}
 
 
@@ -91,8 +96,15 @@ def summarizer(state: State):
 
     try:
         response = llm.invoke(messages)
-    except Exception:
-        response = llm_backup.invoke(messages)
+        if not response:
+            print("Openai llm call didn't work, using groq!", file=sys.stderr)
+            response = llm_backup.invoke(messages)
+    except Exception as e:
+        print("Groq also didn't work, maybe due to rate limits!")
+        raise HTTPException(
+            status_code=status.HTTP_408_REQUEST_TIMEOUT,
+            detail=f"summarize llm call didn't work with exception: {e}",
+        )
 
     return {"summary": response.content, "last_summary": 0}
 

@@ -1,8 +1,10 @@
 import asyncio
 import os
 from functools import lru_cache
+import logging
 
 import asyncpg
+from fastapi import HTTPException, status
 import sqlalchemy
 from dotenv import load_dotenv
 from google.cloud.sql.connector import Connector, IPTypes
@@ -12,6 +14,9 @@ from psycopg_pool import AsyncConnectionPool, ConnectionPool
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG, encoding="utf-8")
 
 LOCAL = bool(os.environ.get("LOCAL"))
 instance_connection_name = os.environ["INSTANCE_CONNECTION_NAME"]
@@ -25,25 +30,32 @@ port = 5432 if not LOCAL else 5412
 @lru_cache
 async def init_connection_pool(connector: Connector) -> AsyncEngine:
 
-    async def get_conn() -> asyncpg.Connection:
-        conn: asyncpg.Connection = await connector.connect_async(
-            instance_connection_name,
-            "asyncpg",
-            user=db_user,
-            password=db_pass,
-            db=db_name,
-            ip_type=IPTypes.PRIVATE
-            if os.environ.get("PRIVATE_IP") else IPTypes.PUBLIC,
+    try:
+        async def get_conn() -> asyncpg.Connection:
+            conn: asyncpg.Connection = await connector.connect_async(
+                instance_connection_name,
+                "asyncpg",
+                user=db_user,
+                password=db_pass,
+                db=db_name,
+                ip_type=IPTypes.PRIVATE
+                if os.environ.get("PRIVATE_IP") else IPTypes.PUBLIC,
+            )
+            return conn
+
+        pool: AsyncEngine = create_async_engine(
+            "postgresql+asyncpg://",
+            async_creator=get_conn,
         )
-        return conn
 
-    pool: AsyncEngine = create_async_engine(
-        "postgresql+asyncpg://",
-        async_creator=get_conn,
-    )
+        logger.info(f"created a connection pool to backend database")
 
-    return pool
-
+        return pool
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not connect to database",
+        )
 
 async def create_tables():
     loop = asyncio.get_running_loop()
